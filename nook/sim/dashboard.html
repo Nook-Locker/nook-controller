@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nook Locker · Simulator</title>
+<style>
+  :root { --ink:#111315; --muted:#5d636a; --line:#dde1e4; --bg:#f4f5f2; --card:#fbfbf8;
+          --red:#c21e14; --green:#1f7a4d; --green-bg:#dff2e7; --amber:#a35b00; --amber-bg:#fff1d6; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:16px 24px;
+           border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:2; }
+  header h1 { font-size:18px; margin:0 12px 0 0; letter-spacing:-.2px; }
+  header h1 span { color:var(--muted); font-weight:500; }
+  .chip { display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border-radius:999px;
+          background:#eceee9; font-size:13px; font-weight:600; }
+  .chip i { width:8px; height:8px; border-radius:50%; background:#9aa1a8; }
+  .chip.ok i { background:var(--green); } .chip.warn i { background:#e08a00; } .chip.bad i { background:var(--red); }
+  main { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr); gap:24px; padding:24px;
+         max-width:1500px; margin:0 auto; }
+  @media (max-width:980px) { main { grid-template-columns:minmax(0,1fr); } }
+  @media (max-width:600px) { main { padding:12px; gap:12px; } section.panel { padding:14px; }
+    .grid { gap:3px; } .locker { padding:2px 3px; border-radius:6px; border-width:1px; } .locker b { font-size:10px; letter-spacing:-.3px; }
+    .locker small { font-size:8px; letter-spacing:0; } .ctrl { grid-template-columns:1fr; gap:6px; }
+    header { padding:12px; gap:8px; } }
+  section.panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.4px; color:var(--muted); margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns:repeat(10, 1fr); gap:6px; }
+  .locker { min-width:0; overflow:hidden; aspect-ratio:1/1.12; border:1.5px solid var(--line); border-radius:8px; background:#fff;
+            display:flex; flex-direction:column; justify-content:space-between; padding:6px 7px;
+            cursor:pointer; font:inherit; text-align:left; color:var(--ink); transition:background .2s, border-color .2s; }
+  .locker:hover { border-color:#9aa1a8; }
+  .locker b { font-size:13px; font-variant-numeric:tabular-nums; }
+  .locker small { font-size:10px; font-weight:700; letter-spacing:.6px; color:var(--muted); text-transform:uppercase; }
+  .locker.open { background:var(--green-bg); border-color:var(--green); }
+  .locker.open small { color:var(--green); }
+  .locker.jam { border-color:#e08a00; border-style:dashed; }
+  .locker.fault { background:repeating-linear-gradient(45deg,#eceee9 0 6px,#fff 6px 12px); color:#8a9096; }
+  .locker.sel { outline:2px solid var(--ink); outline-offset:1px; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; margin-top:14px; color:var(--muted); font-size:13px; }
+  .legend span::before { content:""; display:inline-block; width:12px; height:12px; border-radius:3px;
+                         margin-right:6px; vertical-align:-2px; border:1.5px solid var(--line); background:#fff; }
+  .legend .l-open::before { background:var(--green-bg); border-color:var(--green); }
+  .legend .l-jam::before { border:1.5px dashed #e08a00; }
+  .legend .l-fault::before { background:repeating-linear-gradient(45deg,#dfe2dd 0 3px,#fff 3px 6px); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; }
+  button { font:inherit; font-weight:600; font-size:14px; padding:8px 14px; border-radius:10px;
+           border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; }
+  button:hover { border-color:#9aa1a8; }
+  button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  button.danger.on { background:var(--red); border-color:var(--red); }
+  .stack { display:flex; flex-direction:column; gap:20px; }
+  .ctrl { display:grid; grid-template-columns:130px 1fr; gap:10px 14px; align-items:center; }
+  .ctrl label { color:var(--muted); font-size:13px; font-weight:600; }
+  .hint { color:var(--muted); font-size:13px; margin:10px 0 0; }
+  .bat { height:8px; border-radius:6px; background:#e3e6e2; overflow:hidden; width:120px; display:inline-block; vertical-align:middle; }
+  .bat i { display:block; height:100%; background:var(--green); }
+  .log { list-style:none; margin:0; padding:0; max-height:300px; overflow:auto; font-size:13px; }
+  .log li { padding:7px 0; border-top:1px solid var(--line); display:grid; grid-template-columns:62px 1fr; gap:10px; }
+  .log li:first-child { border-top:0; }
+  .log time { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .log code { font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:#3a3f45; word-break:break-word; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:6px; margin-right:6px;
+         background:#eceee9; text-transform:uppercase; letter-spacing:.4px; }
+  .tag.ok { background:var(--green-bg); color:var(--green); } .tag.bad { background:#fde3e0; color:var(--red); }
+  .tag.wait { background:var(--amber-bg); color:var(--amber); }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  @media (max-width:1250px) { .two { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nook Locker <span>Simulator · <span id="cab">…</span></span></h1>
+  <span class="chip" id="c-cloud"><i></i><span>Cloud</span></span>
+  <span class="chip" id="c-power"><i></i><span>Power</span></span>
+  <span class="chip" id="c-boards"><i></i><span>Boards</span></span>
+  <span class="chip" id="c-queue"><i></i><span>Queue</span></span>
+</header>
+<main>
+  <div class="stack">
+    <section class="panel">
+      <h2>Cabinet · click a closed locker to unlock it, an open one to close it</h2>
+      <div class="grid" id="grid"></div>
+      <div class="legend"><span>Closed, locked</span><span class="l-open">Open</span>
+        <span class="l-jam">Jammed lock</span><span class="l-fault">Board not answering</span></div>
+    </section>
+    <div class="two">
+      <section class="panel"><h2>Cloud receives (MQTT)</h2><ul class="log" id="cloud"></ul></section>
+      <section class="panel"><h2>Cabinet journal (local SQLite)</h2><ul class="log" id="journal"></ul></section>
+    </div>
+  </div>
+  <div class="stack">
+    <section class="panel">
+      <h2>Member</h2>
+      <div class="ctrl">
+        <label>Unlock with</label>
+        <div class="seg"><button id="m-app" class="on">App (internet)</button><button id="m-ble">Bluetooth</button></div>
+        <label>Selected locker</label>
+        <div class="row"><b id="sel">17</b>
+          <button id="b-unlock">Unlock</button><button id="b-close">Close door</button></div>
+      </div>
+      <p class="hint">Bluetooth uses an offline token the app received earlier; it works with the internet cut.</p>
+    </section>
+    <section class="panel">
+      <h2>Incidents</h2>
+      <div class="ctrl">
+        <label>Mains power</label>
+        <div class="row"><button id="t-mains" class="on">On</button>
+          <span class="bat"><i id="bat"></i></span><span id="batt">100%</span></div>
+        <label>Internet</label><div><button id="t-net" class="on">Connected</button></div>
+        <label>Lock boards</label><div class="row" id="boards"></div>
+        <label>Selected lock</label>
+        <div class="row"><button id="t-jam">Jam it</button><button id="b-force">Force door open</button></div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Security tests · selected locker</h2>
+      <div class="row"><button id="s-replay">Replay last command</button>
+        <button id="s-expired">Expired command</button><button id="s-forged">Forged signature</button></div>
+      <p class="hint">Each attempt must be refused and reported on <code>event/unlock</code>.</p>
+    </section>
+    <section class="panel"><h2>Activity</h2><ul class="log" id="notes"></ul></section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let S = null, sel = 17, mode = "app";
+
+async function act(body) {
+  const r = await fetch("/api/action", {method:"POST", headers:{"Content-Type":"application/json"},
+                                        body: JSON.stringify(body)});
+  const res = await r.json(); refresh(); return res;
+}
+const t = (ts) => new Date(ts * 1000).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false});
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const short = (topic) => topic.split("/").slice(2).join("/");
+
+function chip(id, cls, text) { const el = $(id); el.className = "chip " + cls; el.lastElementChild.textContent = text; }
+
+function tagFor(p) {
+  if (p && typeof p === "object") {
+    if (p.ok === false) return '<span class="tag bad">refused</span>';
+    if (p.ok === true) return '<span class="tag ok">ok</span>';
+  }
+  return "";
+}
+
+function render() {
+  $("cab").textContent = S.cabinet;
+  const grid = $("grid");
+  if (!grid.children.length) {
+    S.lockers.forEach((l) => {
+      const b = document.createElement("button");
+      b.className = "locker"; b.innerHTML = `<b>${String(l.n).padStart(3, "0")}</b><small></small>`;
+      b.onclick = () => { sel = l.n; const cur = S.lockers[l.n - 1];
+        act({action: cur.open ? "close" : (mode === "app" ? "app-unlock" : "ble-unlock"), locker: l.n}); };
+      grid.appendChild(b);
+    });
+  }
+  S.lockers.forEach((l, i) => {
+    const el = grid.children[i];
+    el.className = "locker" + (l.open ? " open" : "") + (l.jammed ? " jam" : "") +
+                   (l.fault ? " fault" : "") + (l.n === sel ? " sel" : "");
+    el.lastElementChild.textContent = l.fault ? "no signal" : l.open ? "open" : l.jammed ? "jammed" : "";
+    el.setAttribute("aria-label", `Locker ${l.n}, ${l.open ? "open" : "closed"}`);
+  });
+  $("sel").textContent = String(sel).padStart(3, "0");
+  const cs = S.cloudStatus;
+  chip("c-cloud", S.linkConnected ? "ok" : "bad",
+       (S.linkConnected ? "Cloud online" : "Cloud offline") + (S.mode === "mqtt" ? " · MQTT" : ""));
+  chip("c-power", S.mains ? "ok" : (S.battery > 30 ? "warn" : "bad"),
+       S.mains ? "Mains power" : `On battery · ${Math.round(S.battery)}%`);
+  const failed = S.controller.boards.failed;
+  chip("c-boards", failed.length ? "bad" : "ok",
+       failed.length ? `Board ${failed.join(", ")} not answering` : `${S.controller.boards.total} boards OK`);
+  const q = S.controller.pendingEvents;
+  chip("c-queue", q ? "warn" : "ok", q ? `${q} event(s) waiting to send` : "All events sent");
+  $("t-mains").className = S.mains ? "on" : "danger on"; $("t-mains").textContent = S.mains ? "On" : "Cut";
+  $("t-net").className = S.internet ? "on" : "danger on"; $("t-net").textContent = S.internet ? "Connected" : "Cut";
+  $("bat").style.width = S.battery + "%";
+  $("bat").style.background = S.battery > 30 ? "var(--green)" : "var(--red)";
+  $("batt").textContent = Math.round(S.battery) + "%" + (S.mains ? " · charging" : "");
+  const bd = $("boards");
+  if (!bd.children.length) Object.keys(S.boards).forEach((a) => {
+    const b = document.createElement("button"); b.dataset.addr = a;
+    b.onclick = () => act({action:"board-fault", board: +a, on: !S.boards[a]}); bd.appendChild(b);
+  });
+  [...bd.children].forEach((b) => { const f = S.boards[b.dataset.addr];
+    b.className = f ? "danger on" : ""; b.textContent = `Board ${b.dataset.addr}: ${f ? "unplugged" : "OK"}`; });
+  const cur = S.lockers[sel - 1];
+  $("t-jam").textContent = cur.jammed ? "Free it" : "Jam it";
+  $("t-jam").className = cur.jammed ? "danger on" : "";
+  $("cloud").innerHTML = S.cloud.map((m) => `<li><time>${t(m.ts)}</time><div>${tagFor(m.payload)}<b>${esc(short(m.topic))}</b>
+      <br><code>${esc(JSON.stringify(m.payload))}</code></div></li>`).join("") || "<li><span></span><div class='hint'>Nothing yet.</div></li>";
+  $("journal").innerHTML = S.journal.map((e) => `<li><time>${t(e.ts)}</time><div>
+      <span class="tag ${e.sent ? "ok" : "wait"}">${e.sent ? "sent" : "queued"}</span><b>${esc(e.topic)}</b>
+      <br><code>${esc(JSON.stringify(e.payload))}</code></div></li>`).join("") || "<li><span></span><div class='hint'>Nothing yet.</div></li>";
+  $("notes").innerHTML = S.notes.map((n) => `<li><time>${t(n.ts)}</time><div>${esc(n.text)}</div></li>`).join("");
+}
+
+async function refresh() {
+  try { S = await (await fetch("/api/state")).json(); render(); } catch (e) { chip("c-cloud", "bad", "Simulator stopped"); }
+}
+$("m-app").onclick = () => { mode = "app"; $("m-app").className = "on"; $("m-ble").className = ""; };
+$("m-ble").onclick = () => { mode = "ble"; $("m-ble").className = "on"; $("m-app").className = ""; };
+$("b-unlock").onclick = () => act({action: mode === "app" ? "app-unlock" : "ble-unlock", locker: sel});
+$("b-close").onclick = () => act({action:"close", locker: sel});
+$("b-force").onclick = () => act({action:"force", locker: sel});
+$("t-jam").onclick = () => act({action:"jam", locker: sel, on: !S.lockers[sel - 1].jammed});
+$("t-mains").onclick = () => act({action:"mains", on: !S.mains});
+$("t-net").onclick = () => act({action:"internet", on: !S.internet});
+$("s-replay").onclick = () => act({action:"replay"});
+$("s-expired").onclick = () => act({action:"expired", locker: sel});
+$("s-forged").onclick = () => act({action:"forged", locker: sel});
+refresh(); setInterval(refresh, 600);
+</script>
+</body>
+</html>

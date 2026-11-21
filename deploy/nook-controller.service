@@ -1,0 +1,22 @@
+[Unit]
+Description=Nook Locker cabinet controller
+After=network-online.target bluetooth.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nook
+Group=nook
+SupplementaryGroups=dialout gpio i2c bluetooth
+WorkingDirectory=/opt/nook
+ExecStart=/opt/nook/venv/bin/python -m nook run --config /etc/nook/config.toml
+Restart=always
+RestartSec=3
+# Hardening (sudo poweroff on low battery needs NoNewPrivileges off)
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/nook
+
+[Install]
+WantedBy=multi-user.target

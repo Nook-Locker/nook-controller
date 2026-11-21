@@ -1,0 +1,53 @@
+# Nook Locker controller configuration — copy to /etc/nook/config.toml
+
+[cabinet]
+id = "cab-001"                 # must match the cabinet's MQTT client certificate
+lockers = 100
+locks_per_board = 48           # Kerong KR-CU48
+first_board_address = 1        # DIP switch address of the first board
+
+[serial]
+port = "/dev/ttyUSB0"          # USB-RS485 converter (use /dev/serial/by-id/... to be safe)
+baudrate = 9600
+timeout = 0.3
+retries = 2
+
+[mqtt]
+host = "mqtt.example.com"
+port = 8883
+tls = true
+ca = "/etc/nook/ca.pem"
+cert = "/etc/nook/cabinet.crt"
+key = "/etc/nook/cabinet.key"
+username = ""
+password = ""
+heartbeat = 30                 # seconds between retained status messages
+
+[security]
+secret_file = "/etc/nook/secret"   # shared with the cloud, 32+ random bytes, chmod 600
+max_command_ttl = 60           # refuse commands that expire further ahead than this
+clock_skew = 5                 # seconds of clock difference tolerated
+max_offline_days = 7           # longest validity window accepted for a Bluetooth token
+min_unlock_interval = 2.0      # per locker
+
+[doors]
+poll_interval = 0.5
+left_open_alarm = 120          # seconds before an open door raises event/door left_open
+
+[power]
+mains_gpio = 0                 # BCM pin that is HIGH while mains is present, 0 = off
+ina219_address = 0             # UPS HAT battery monitor, e.g. 0x42 (66), 0 = off
+i2c_bus = 1
+battery_empty_v = 6.0
+battery_full_v = 8.4
+low_battery = 20               # % on battery that raises event/power low_battery
+shutdown_below = 5             # % on battery that triggers a clean shutdown, 0 = never
+shutdown_command = "sudo systemctl poweroff"
+
+[ble]
+enabled = true
+name = ""                      # advertised name, default "Nook-<cabinet id>"
+
+[storage]
+db = "/var/lib/nook/journal.db"
+keep_days = 90                 # how long sent events stay in the local audit log

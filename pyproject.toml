@@ -1,0 +1,23 @@
+[project]
+name = "nook-controller"
+version = "1.0.0"
+description = "Raspberry Pi controller for the Nook Locker 100 smart locker cabinet"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+pi = ["pyserial>=3.5", "paho-mqtt>=2.0", "smbus2>=0.4", "bless>=0.2.6"]
+mqtt = ["paho-mqtt>=2.0"]
+dev = ["pytest>=8", "pyserial>=3.5", "paho-mqtt>=2.0"]
+
+[project.scripts]
+nook = "nook.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["nook*"]
+
+[tool.setuptools.package-data]
+"nook.sim" = ["dashboard.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

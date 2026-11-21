@@ -1,0 +1,5 @@
+# On the Raspberry Pi (the simulator needs none of these, except paho-mqtt with --mqtt)
+pyserial>=3.5
+paho-mqtt>=2.0
+smbus2>=0.4
+bless>=0.2.6
